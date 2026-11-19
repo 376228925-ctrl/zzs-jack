@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", "Menlo", "Monaco", "Consolas", ui-monospace, monospace;
+}
+
+:root,
+[data-theme="sunset"] {
+  --theme-bg-fallback: #121724;
+  --theme-accent: #FF8E62;
+  --theme-accent-hover: #FFA682;
+  --theme-accent-fg: #121218;
+  --theme-accent-soft: rgba(255, 142, 98, 0.16);
+  --theme-glass: rgba(17, 21, 33, 0.72);
+  --theme-glass-strong: rgba(14, 18, 29, 0.86);
+  --theme-glass-border: rgba(255, 240, 228, 0.16);
+  --theme-scrim-top: rgba(15, 19, 30, 0.42);
+  --theme-scrim-mid: rgba(16, 20, 32, 0.56);
+  --theme-scrim-bot: rgba(12, 16, 26, 0.88);
+  --theme-court-outer: #2A6F97;
+  --theme-court-inner: #D96B59;
+  --theme-court-kitchen: #B85244;
+  --theme-court-glow: rgba(255, 184, 132, 0.35);
+}
+
+[data-theme="botanical"] {
+  --theme-bg-fallback: #0D1914;
+  --theme-accent: #9EF0B8;
+  --theme-accent-hover: #BFF7D0;
+  --theme-accent-fg: #0A1912;
+  --theme-accent-soft: rgba(158, 240, 184, 0.16);
+  --theme-glass: rgba(11, 24, 18, 0.74);
+  --theme-glass-strong: rgba(9, 20, 15, 0.88);
+  --theme-glass-border: rgba(226, 250, 234, 0.16);
+  --theme-scrim-top: rgba(10, 22, 16, 0.40);
+  --theme-scrim-mid: rgba(11, 24, 18, 0.58);
+  --theme-scrim-bot: rgba(8, 18, 13, 0.90);
+  --theme-court-outer: #173F2E;
+  --theme-court-inner: #236B4B;
+  --theme-court-kitchen: #1A5239;
+  --theme-court-glow: rgba(158, 240, 184, 0.25);
+}
+
+[data-theme="terracotta"] {
+  --theme-bg-fallback: #1B120E;
+  --theme-accent: #F4B36C;
+  --theme-accent-hover: #F8C78E;
+  --theme-accent-fg: #1C110B;
+  --theme-accent-soft: rgba(244, 179, 108, 0.18);
+  --theme-glass: rgba(27, 18, 13, 0.74);
+  --theme-glass-strong: rgba(22, 14, 10, 0.88);
+  --theme-glass-border: rgba(255, 232, 210, 0.16);
+  --theme-scrim-top: rgba(26, 17, 12, 0.40);
+  --theme-scrim-mid: rgba(27, 18, 13, 0.56);
+  --theme-scrim-bot: rgba(19, 12, 9, 0.90);
+  --theme-court-outer: #7C341E;
+  --theme-court-inner: #BC4E2A;
+  --theme-court-kitchen: #9A3B1D;
+  --theme-court-glow: rgba(244, 179, 108, 0.28);
+}
+
+[data-theme="midnight"] {
+  --theme-bg-fallback: #080B10;
+  --theme-accent: #D4FF2B;
+  --theme-accent-hover: #E1FF61;
+  --theme-accent-fg: #080B10;
+  --theme-accent-soft: rgba(212, 255, 43, 0.15);
+  --theme-glass: rgba(14, 19, 30, 0.78);
+  --theme-glass-strong: rgba(10, 14, 22, 0.90);
+  --theme-glass-border: rgba(255, 255, 255, 0.13);
+  --theme-scrim-top: rgba(8, 11, 16, 0.44);
+  --theme-scrim-mid: rgba(8, 11, 16, 0.62);
+  --theme-scrim-bot: rgba(8, 11, 16, 0.92);
+  --theme-court-outer: #081F52;
+  --theme-court-inner: #1441A2;
+  --theme-court-kitchen: #0C2A6E;
+  --theme-court-glow: rgba(56, 120, 255, 0.36);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--theme-bg-fallback);
+    color: #F8FAFC;
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: var(--theme-bg-fallback);
+    overflow-x: hidden;
+  }
+}
+
+.font-score {
+  font-family: "DIN Condensed", "Barlow Condensed", "Arial Narrow", "PingFang SC", sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.theme-glass {
+  background-color: var(--theme-glass);
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  border-color: var(--theme-glass-border);
+}
+
+.theme-glass-strong {
+  background-color: var(--theme-glass-strong);
+  backdrop-filter: blur(26px) saturate(140%);
+  -webkit-backdrop-filter: blur(26px) saturate(140%);
+  border-color: var(--theme-glass-border);
+}
+
+.theme-accent-bg {
+  background-color: var(--theme-accent);
+  color: var(--theme-accent-fg);
+}
+
+.theme-accent-bg:hover {
+  background-color: var(--theme-accent-hover);
+}
+
+.theme-accent-text {
+  color: var(--theme-accent);
+}
+
+.theme-accent-border {
+  border-color: var(--theme-accent);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

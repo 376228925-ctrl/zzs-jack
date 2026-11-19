@@ -1,0 +1,234 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default deny everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Hardened Global Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Pure token check (0 DB reads, safe for list rules)
+    function isBootstrappedSuperAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'hjhm1314@gmail.com';
+    }
+
+    function isSuperAdmin() {
+      return isBootstrappedSuperAdmin() || (
+        isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'super_admin'
+      );
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() || (
+        isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'gender', 'dupr', 'role', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'gender', 'dupr', 'paddle', 'playStyle', 'bio', 'role', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid == userId && isValidId(data.uid) &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 32 &&
+        data.gender in ['M', 'F', 'U'] &&
+        data.dupr is number && data.dupr >= 2.0 && data.dupr <= 6.0 &&
+        (!('paddle' in data) || (data.paddle is string && data.paddle.size() <= 48)) &&
+        (!('playStyle' in data) || (data.playStyle is string && data.playStyle.size() <= 48)) &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 160)) &&
+        data.role in ['player', 'admin', 'super_admin'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAdminGrant(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'role', 'grantedBy', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'role', 'grantedBy', 'createdAt']) &&
+        data.uid is string && data.uid == userId && isValidId(data.uid) &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 32 &&
+        data.role in ['admin', 'super_admin'] &&
+        data.grantedBy is string && isValidId(data.grantedBy) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidSession(data, sessionId) {
+      return data.keys().hasAll([
+          'id', 'sessionDate', 'title', 'status', 'createdBy',
+          'config', 'players', 'rounds', 'seed', 'rosterDirty', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'sessionDate', 'title', 'venue', 'status', 'createdBy', 'createdByName',
+          'config', 'players', 'rounds', 'seed', 'rosterDirty', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id == sessionId && isValidId(data.id) &&
+        data.sessionDate is string && data.sessionDate.size() == 10 && data.sessionDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 64 &&
+        (!('venue' in data) || (data.venue is string && data.venue.size() <= 64)) &&
+        data.status in ['draft', 'published', 'completed'] &&
+        data.createdBy is string && isValidId(data.createdBy) &&
+        (!('createdByName' in data) || (data.createdByName is string && data.createdByName.size() <= 32)) &&
+        data.config is map &&
+        data.players is list && data.players.size() <= 48 &&
+        data.rounds is list && data.rounds.size() <= 20 &&
+        data.seed is number &&
+        data.rosterDirty is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPersonalReview(data) {
+      return data.keys().hasAll([
+          'ownerId', 'playerName', 'headline', 'trendSummary',
+          'strengths', 'focusAreas', 'trainingPlan', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'playerName', 'headline', 'trendSummary',
+          'strengths', 'focusAreas', 'trainingPlan', 'createdAt'
+        ]) &&
+        data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId) &&
+        data.playerName is string && data.playerName.size() >= 1 && data.playerName.size() <= 32 &&
+        data.headline is string && data.headline.size() >= 1 && data.headline.size() <= 120 &&
+        data.trendSummary is string && data.trendSummary.size() <= 600 &&
+        data.strengths is string && data.strengths.size() <= 600 &&
+        data.focusAreas is string && data.focusAreas.size() <= 600 &&
+        data.trainingPlan is list && data.trainingPlan.size() <= 5 &&
+        (data.trainingPlan.size() == 0 || (data.trainingPlan[0] is string && data.trainingPlan[0].size() <= 160)) &&
+        data.createdAt is timestamp;
+    }
+
+    // --- Collection: /users/{userId} ---
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isBootstrappedSuperAdmin());
+
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().role == 'player' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action: Owner updates own profile fields (cannot escalate role)
+          (
+            isOwner(userId) &&
+            incoming().role == existing().role &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'gender', 'dupr', 'paddle', 'playStyle', 'bio', 'updatedAt'
+            ])
+          ) ||
+          // Action: Super Admin updates user role
+          (
+            isSuperAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['role', 'updatedAt'])
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // --- Collection: /admins/{userId} ---
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isSuperAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isBootstrappedSuperAdmin());
+
+      allow create: if isSuperAdmin() &&
+        isValidId(userId) &&
+        isValidAdminGrant(incoming(), userId) &&
+        incoming().grantedBy == request.auth.uid &&
+        incoming().createdAt == request.time;
+
+      allow update: if isSuperAdmin() &&
+        isValidId(userId) &&
+        isValidAdminGrant(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role', 'grantedBy']);
+
+      allow delete: if isSuperAdmin() && isValidId(userId);
+    }
+
+    // --- Collection: /sessions/{sessionId} ---
+    match /sessions/{sessionId} {
+      allow get: if isValidId(sessionId) && isSignedIn() && (
+        resource.data.status in ['published', 'completed'] ||
+        resource.data.createdBy == request.auth.uid ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.status in ['published', 'completed'] ||
+        resource.data.createdBy == request.auth.uid ||
+        isBootstrappedSuperAdmin()
+      );
+
+      allow create: if isAdmin() &&
+        isValidId(sessionId) &&
+        isValidSession(incoming(), sessionId) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isAdmin() &&
+        isValidId(sessionId) &&
+        isValidSession(incoming(), sessionId) &&
+        incoming().id == existing().id &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'sessionDate', 'title', 'venue', 'status', 'config', 'players', 'rounds', 'seed', 'rosterDirty', 'updatedAt'
+        ]);
+
+      allow delete: if isSuperAdmin() && isValidId(sessionId);
+    }
+
+    // --- Collection: /personal_records/{recordId} ---
+    match /personal_records/{recordId} {
+      allow get: if isValidId(recordId) && isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(recordId) &&
+        isValidPersonalReview(incoming()) &&
+        incoming().createdAt == request.time;
+
+      allow update: if false;
+
+      allow delete: if isVerifiedUser() && isValidId(recordId) && resource.data.ownerId == request.auth.uid;
+    }
+  }
+}

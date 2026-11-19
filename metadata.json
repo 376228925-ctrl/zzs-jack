@@ -1,0 +1,6 @@
+{
+  "name": "轻转匹克 · 匹克球智能转转赛",
+  "description": "适配移动端的匹克球智能转转赛小程序，支持八人转、水平均衡匹配、混双优选、胜者升场、微信接龙一键导入与实时积分战报。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
